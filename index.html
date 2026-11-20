@@ -5,17 +5,20 @@ html
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Inventura JS</title>
-    <!-- Učitavanje biblioteke za skeniranje bar-kodova preko kamere -->
-    <script src="https://unpkg.com"></script>
     <style>
-        body { font-family: Arial, sans-serif; margin: 15px; padding: 0; background: #f4f4f9; color: #333; }
+        body { font-family: Arial, sans-serif; margin: 15px; background: #f4f4f9; color: #333; }
         h2 { text-align: center; }
         .box { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 15px; }
-        button { width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 5px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 8px; }
+        button { width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 5px; font-size: 16px; font-weight: bold; margin-top: 8px; }
+        button:disabled { background: #999; }
         button.delete { background: #dc3545; }
         button.download { background: #28a745; }
+        button.drive { background: #ff5722; margin-top: 15px; }
+        button.server-file { background: #17a2b8; }
+        button.edit { background: #ffc107; color: #000; padding: 6px 10px; font-size: 14px; width: auto; margin-top: 0; }
         input { width: 94%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; }
-        #reader { width: 100%; border-radius: 8px; overflow: hidden; margin-top: 10px; }
+        video { width: 100%; max-height: 260px; background: #000; border-radius: 8px; margin-top: 10px; display: none; object-fit: cover; }
+        #status { padding: 10px; margin-top: 10px; border-radius: 5px; font-size: 14px; display: none; background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
         th { background: #f2f2f2; }
@@ -23,126 +26,179 @@ html
 </head>
 <body>
 
-    <h2>📦 Mobilna Djokina Inventura 2026</h2>
+    <h2>📦 Mobilna Gio57#Djokosavic Inventura 2026</h2>
 
-    <!-- Kamera Skener -->
     <div class="box">
         <h3>1. Skeniranje / Unos</h3>
-        <div id="reader"></div>
-        <button onclick="pokreniKameru()">📷 Upali kameru za Bar-kod</button>
+        <div id="status"></div>
+        <video id="video" playsinline autoplay muted></video>
+        <button id="btnKamera" type="button">📷 Upali kameru za Bar-kod</button>
         
-        <p>
-            <label>Bar-kod ili Šifra:</label>
-            <input type="text" id="sifra" placeholder="Skenirajte ili upišite ručno">
-        </p>
-        <p>
-            <label>Količina:</label>
-            <input type="number" id="kolicina" value="1" min="1">
-        </p>
-        <button onclick="dodajArtikal()">➕ Upiši Artikal</button>
+        <p><label>Bar-kod ili Šifra:</label><input type="text" id="sifra" placeholder="Skenirajte ili upišite ručno"></p>
+        <p><label>Količina:</label><input type="number" id="kolicina" value="1" min="1"></p>
+        <button id="btnDodaj" type="button">➕ Upiši Artikal</button>
     </div>
 
-    <!-- Lista artikala u memoriji -->
     <div class="box">
         <h3>2. Zadržani artikli na telefonu</h3>
-        <button class="download" onclick="preuzmiCSV()">💾 Preuzmi podatke za Računar (TXT)</button>
-        <button class="delete" onclick="obrisiSve()">🗑️ Obriši sve sa telefona</button>
+        <button class="download" id="btnPreuzmi" type="button">💾 Preuzmi lokalno na telefon (TXT)</button>
+        <button class="delete" id="btnObrisi" type="button">🗑️ Obriši sve sa telefona</button>
+        <button class="drive" id="btnServer" type="button">🚀 Pošalji inventuru na C:\SERVER</button>
+        <button class="server-file" id="btnOtvoriServer" type="button">📂 Otvori / Preuzmi inventura.txt sa servera</button>
         
-        <div style="overflow-x:auto;">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Šifra / Bar-kod</th>
-                        <th>Količina</th>
-                    </tr>
-                </thead>
-                <tbody id="tabelaArtikala">
-                    <!-- Ovdje JS ubacuje redove -->
-                </tbody>
-            </table>
-        </div>
+        <table>
+            <thead><tr><th>Šifra</th><th>Kol.</th><th>Akcija</th></tr></thead>
+            <tbody id="tabelaArtikala"></tbody>
+        </table>
     </div>
 
 <script>
+    const SERVER_URL = "http://10.53.98.10:3000";
     let artikli = JSON.parse(localStorage.getItem("inventura_artikli")) || [];
-    prikaziArtikale();
+    let stream = null, aktivno = false, pauza = false;
+    const video = document.getElementById("video");
+    const btnKamera = document.getElementById("btnKamera");
+    const statusDiv = document.getElementById("status");
 
-    // Funkcija za paljenje kamere
-    function pokreniKameru() {
-        const html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
-        html5QrcodeScanner.render((decodedText) => {
-            document.getElementById("sifra").value = decodedText;
-            html5QrcodeScanner.clear(); // Gasi kameru nakon uspješnog skeniranja
-        });
-    }
+    function poruka(t) { statusDiv.style.display = "block"; statusDiv.innerHTML = t; }
 
-    // Dodavanje artikla u lokalnu memoriju telefona
-    function dodajArtikal() {
-        let sifra = document.getElementById("sifra").value.trim();
-        let kolicina = parseInt(document.getElementById("kolicina").value);
+    btnKamera.onclick = async function() {
+        if (aktivno) { ugasiKameru(); return; }
+        statusDiv.style.display = "none";
 
-        if (!sifra || kolicina < 1) {
-            alert("Molimo unesite ispravnu šifru i količinu!");
+        if (!window.isSecureContext) {
+            poruka("<b>BLOKIRANO:</b> Sajt mora biti otvoren preko <b>https://</b> adrese.");
+            return;
+        }
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            poruka("<b>GREŠKA:</b> Koristite Google Chrome pregledač.");
             return;
         }
 
-        // Ako artikal već postoji, samo saberi količinu, inače dodaj novi
-        let postojeci = artikli.find(a => a.sifra === sifra);
-        if (postojeci) {
-            postojeci.kolicina += kolicina;
-        } else {
-            artikli.push({ sifra: sifra, kolicina: kolicina });
+        btnKamera.disabled = true;
+        btnKamera.innerText = "⏳ Palim kameru...";
+
+        try {
+            if (stream) {
+                stream.getTracks().forEach(t => t.stop());
+            }
+
+            stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: "environment" },
+                audio: false
+            });
+
+            video.style.display = "block";
+            video.srcObject = stream;
+
+            video.onloadedmetadata = () => {
+                video.play().catch(() => {});
+                aktivno = true;
+                btnKamera.disabled = false;
+                btnKamera.innerText = "🛑 Ugasi kameru";
+                btnKamera.style.background = "#6c757d";
+                citajBarkod();
+            };
+        } catch (err) {
+            btnKamera.disabled = false;
+            btnKamera.innerText = "📷 Upali kameru za Bar-kod";
+            poruka("<b>GREŠKA KAMERE:</b> " + err.name + " - " + err.message);
         }
+    };
 
+    function ugasiKameru() {
+        aktivno = false;
+        if (stream) {
+            stream.getTracks().forEach(t => t.stop());
+            stream = null;
+        }
+        video.srcObject = null;
+        video.style.display = "none";
+        btnKamera.disabled = false;
+        btnKamera.innerText = "📷 Upali kameru za Bar-kod";
+        btnKamera.style.background = "#007bff";
+    }
+
+    function citajBarkod() {
+        if (!("BarcodeDetector" in window)) {
+            poruka("Kamera je upaljena, ali ovaj telefon nema ugrađen čitač bar-kodova.");
+            return;
+        }
+        const detector = new BarcodeDetector();
+        async function petlja() {
+            if (!aktivno) return;
+            if (!pauza && video.readyState >= 2) {
+                try {
+                    const kodovi = await detector.detect(video);
+                    if (kodovi.length > 0) {
+                        pauza = true;
+                        document.getElementById("sifra").value = kodovi[0].rawValue;
+                        if (navigator.vibrate) navigator.vibrate(100);
+                        dodajArtikal();
+                        setTimeout(() => { pauza = false; }, 1500);
+                    }
+                } catch (e) {}
+            }
+            requestAnimationFrame(petlja);
+        }
+        petlja();
+    }
+
+    function dodajArtikal() {
+        let sifra = document.getElementById("sifra").value.trim();
+        let kol = parseInt(document.getElementById("kolicina").value);
+        if (!sifra || isNaN(kol) || kol < 1) return;
+        let p = artikli.find(a => a.sifra === sifra);
+        if (p) p.kolicina += kol; else artikli.push({ sifra: sifra, kolicina: kol });
         localStorage.setItem("inventura_artikli", JSON.stringify(artikli));
-        prikaziArtikale();
-
-        // Resetuj polja za sljedeći unos
+        prikazi();
         document.getElementById("sifra").value = "";
         document.getElementById("kolicina").value = "1";
     }
 
-    // Prikazivanje tabele na ekranu
-    function prikaziArtikale() {
-        let tbody = document.getElementById("tabelaArtikala");
-        tbody.innerHTML = "";
-        artikli.forEach(artikal => {
-            let row = `<tr><td>${artikal.sifra}</td><td>${artikal.kolicina}</td></tr>`;
-            tbody.innerHTML += row;
-        });
+    function izmjeni(s) {
+        let a = artikli.find(x => x.sifra === s);
+        if (!a) return;
+        let n = prompt("Nova količina za " + s + ":", a.kolicina);
+        if (n === null) return;
+        let b = parseInt(n);
+        if (isNaN(b) || b < 0) return;
+        if (b === 0) artikli = artikli.filter(x => x.sifra !== s); else a.kolicina = b;
+        localStorage.setItem("inventura_artikli", JSON.stringify(artikli));
+        prikazi();
     }
 
-    // Generisanje fajla bez naslova za prebacivanje na računar
-    function preuzmiCSV() {
-        if (artikli.length === 0) {
-            alert("Nema podataka za preuzimanje!");
-            return;
-        }
-        
-        // Izbačen naslov - kreće se odmah od praznog stringa sa podacima
-        let csvContent = "data:text/csv;charset=utf-8,";
+    function prikazi() {
+        let tb = document.getElementById("tabelaArtikala");
+        tb.innerHTML = "";
         artikli.forEach(a => {
-            csvContent += `${a.sifra},${a.kolicina}\n`;
+            tb.innerHTML += `<tr><td>${a.sifra}</td><td>${a.kolicina}</td><td><button class="edit" onclick="izmjeni('${a.sifra}')">✏️</button></td></tr>`;
         });
-
-        let encodedUri = encodeURI(csvContent);
-        let link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", "inventura.txt");
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
     }
 
-    // Brisanje podataka sa telefona
-    function obrisiSve() {
-        if (confirm("Da li ste sigurni da želite obrisati sve skenirane artikle sa telefona?")) {
-            localStorage.removeItem("inventura_artikli");
-            artikli = [];
-            prikaziArtikale();
-        }
-    }
+    document.getElementById("btnDodaj").onclick = dodajArtikal;
+    document.getElementById("btnPreuzmi").onclick = () => {
+        let txt = artikli.map(a => `${a.sifra};${a.kolicina}`).join("\r\n");
+        if (!txt) return alert("Lista je prazna!");
+        let l = document.createElement("a");
+        l.href = URL.createObjectURL(new Blob([txt], { type: "text/plain" }));
+        l.download = "inventura.txt";
+        l.click();
+    };
+    document.getElementById("btnObrisi").onclick = () => {
+        if (confirm("Obrisati sve?")) { artikli = []; localStorage.removeItem("inventura_artikli"); prikazi(); }
+    };
+    document.getElementById("btnServer").onclick = async () => {
+        let txt = artikli.map(a => `${a.sifra};${a.kolicina}`).join("\r\n");
+        if (!txt) return alert("Lista je prazna!");
+        try {
+            let r = await fetch(`${SERVER_URL}/snimi`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ podaci: txt }) });
+            alert(r.ok ? "✅ Poslato!" : "❌ Greška: " + r.statusText);
+        } catch (e) { alert("❌ Nema veze sa serverom (" + SERVER_URL + ")"); }
+    };
+    document.getElementById("btnOtvoriServer").onclick = () => window.open(`${SERVER_URL}/inventura.txt`, "_blank");
+
+    prikazi();
 </script>
-
 </body>
 </html>
