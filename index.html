@@ -7,11 +7,11 @@ html
     <title>Inventura 2026</title>
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#007bff">
-    <link rel="manifest" href='data:application/manifest+json,{"name":"Inventura 2026","short_name":"Inventura","start_url":"https://github.io","display":"standalone","background_color":"#f4f4f9","theme_color":"#007bff","icons":[{"src":"https://flaticon.com","sizes":"512x512","type":"image/png"}]}'>
+    <script src="https://unpkg.com" type="text/javascript"></script>
     <style>
         body { font-family: Arial, sans-serif; margin: 15px; background: #f4f4f9; color: #333; }
         h2 { text-align: center; }
-        .box { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 15px; overflow-x: auto; }
+        .box { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 15px; }
         button { width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 5px; font-size: 16px; font-weight: bold; margin-top: 8px; cursor: pointer; }
         button:disabled { background: #999; }
         button.delete { background: #dc3545; }
@@ -19,7 +19,7 @@ html
         button.share { background: #0078d4; margin-top: 12px; }
         button.edit { background: #ffc107; color: #000; padding: 6px 10px; font-size: 14px; width: auto; margin-top: 0; }
         input { width: 94%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; }
-        video { width: 100%; max-height: 260px; background: #000; border-radius: 8px; margin-top: 10px; display: none; object-fit: cover; }
+        #reader { width: 100%; margin-top: 10px; border-radius: 8px; overflow: hidden; display: none; }
         #status { padding: 10px; margin-top: 10px; border-radius: 5px; font-size: 14px; display: none; background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
@@ -28,16 +28,16 @@ html
 </head>
 <body>
 
-    <h2>📦 Mobilna zarez.gioco artikli Inventura 2026</h2>
+    <h2>📦 Mobilna zarez.DjokoSavic57 Inventura 2026</h2>
 
     <div class="box">
         <h3>1. Skeniranje / Unos</h3>
         <div id="status"></div>
-        <video id="video" playsinline autoplay muted></video>
+        <div id="reader"></div>
         <button id="btnKamera" type="button">📷 Upali kameru za Bar-kod</button>
         
         <p><label>Bar-kod ili Šifra:</label><input type="text" id="sifra" placeholder="Skenirajte ili upišite ručno"></p>
-        <p><label>Naziv robe:</label><input type="text" id="naziv" placeholder="Unesite naziv artikla"></p>
+        <p><label>Naziv artikla:</label><input type="text" id="naziv" placeholder="Upišite naziv (opciono)"></p>
         <p><label>Količina:</label><input type="number" id="kolicina" value="1" min="1"></p>
         <p><label>Cijena:</label><input type="number" id="cijena" step="0.01" placeholder="0.00"></p>
         <button id="btnDodaj" type="button">➕ Upiši Artikal</button>
@@ -50,129 +50,102 @@ html
         <button class="delete" id="btnObrisi" type="button">🗑️ Obriši sve sa telefona</button>
         
         <table>
-            <thead><tr><th>Šifra</th><th>Naziv</th><th>Kol.</th><th>Cijena</th><th>Akcija</th></tr></thead>
+            <thead>
+                <tr>
+                    <th>Šifra / Naziv</th>
+                    <th>Kol.</th>
+                    <th>Cijena</th>
+                    <th>Akcija</th>
+                </tr>
+            </thead>
             <tbody id="tabelaArtikala"></tbody>
         </table>
     </div>
 
 <script>
     let artikli = JSON.parse(localStorage.getItem("inventura_artikli")) || [];
-    let stream = null, aktivno = false, pauza = false;
-    const video = document.getElementById("video");
+    let html5QrCode = null;
+    let aktivno = false;
+    let pauza = false;
+
     const btnKamera = document.getElementById("btnKamera");
     const statusDiv = document.getElementById("status");
+    const readerDiv = document.getElementById("reader");
 
     function poruka(t) { 
         statusDiv.style.display = "block"; 
         statusDiv.innerHTML = t; 
     }
 
-    document.getElementById("sifra").addEventListener("input", function() {
-        let s = this.value.trim();
-        let p = artikli.find(a => a.sifra === s);
-        if (p) {
-            document.getElementById("naziv").value = p.naziv || "";
-            document.getElementById("cijena").value = p.cijena || "";
-        }
-    });
-
     btnKamera.onclick = async function() {
-        if (aktivno) { ugasiKameru(); return; }
+        if (aktivno) { 
+            await ugasiKameru(); 
+            return; 
+        }
         statusDiv.style.display = "none";
 
         if (!window.isSecureContext) {
             poruka("<b>BLOKIRANO:</b> Sajt mora biti otvoren preko <b>https://</b> adrese.");
             return;
         }
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            poruka("<b>GREŠKA:</b> Pregledač ne podržava pristup kameri. Koristite Google Chrome.");
-            return;
-        }
 
         btnKamera.disabled = true;
         btnKamera.innerText = "⏳ Palim kameru...";
+        readerDiv.style.display = "block";
 
         try {
-            if (stream) stream.getTracks().forEach(t => t.stop());
-            
-            stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: { ideal: "environment" } },
-                audio: false
-            });
+            html5QrCode = new Html5Qrcode("reader");
+            await html5QrCode.start(
+                { facingMode: "environment" },
+                { fps: 10, qrbox: { width: 250, height: 150 } },
+                (decodedText) => {
+                    if (pauza) return;
+                    pauza = true;
+                    document.getElementById("sifra").value = decodedText;
+                    
+                    // Ako artikal već postoji, popuni njegov naziv i cijenu
+                    let postojeci = artikli.find(a => a.sifra === decodedText);
+                    if (postojeci) {
+                        if (!document.getElementById("naziv").value) document.getElementById("naziv").value = postojeci.naziv || "";
+                        if (!document.getElementById("cijena").value) document.getElementById("cijena").value = postojeci.cijena || "";
+                    }
 
-            video.style.display = "block";
-            video.srcObject = stream;
-            await video.play();
+                    if (navigator.vibrate) navigator.vibrate(100);
+                    dodajArtikal();
+                    setTimeout(() => { pauza = false; }, 1500);
+                },
+                (errorMessage) => {}
+            );
 
             aktivno = true;
             btnKamera.disabled = false;
             btnKamera.innerText = "🛑 Ugasi kameru";
             btnKamera.style.background = "#6c757d";
-            
-            citajBarkod();
-
         } catch (err) {
-            ugasiKameru();
-            poruka("<b>GREŠKA KAMERE:</b> " + err.name + " - " + err.message);
+            await ugasiKameru();
+            poruka("<b>GREŠKA KAMERE:</b> " + err);
         }
     };
 
-    function ugasiKameru() {
-        aktivno = false;
-        if (stream) {
-            stream.getTracks().forEach(t => t.stop());
-            stream = null;
+    async function ugasiKameru() {
+        if (html5QrCode && aktivno) {
+            try { await html5QrCode.stop(); } catch (e) {}
         }
-        video.srcObject = null;
-        video.style.display = "none";
+        aktivno = false;
+        readerDiv.style.display = "none";
         btnKamera.disabled = false;
         btnKamera.innerText = "📷 Upali kameru za Bar-kod";
         btnKamera.style.background = "#007bff";
-    }
-
-    function citajBarkod() {
-        if (!("BarcodeDetector" in window)) {
-            poruka("Kamera radi, ali ovaj pregledač/telefon nema ugrađen čitač bar-kodova.");
-            return;
-        }
-        const detector = new BarcodeDetector();
-        async function petlja() {
-            if (!aktivno) return;
-            if (!pauza && video.readyState >= 2) {
-                try {
-                    const kodovi = await detector.detect(video);
-                    if (kodovi.length > 0) {
-                        pauza = true;
-                        let kod = kodovi[0].rawValue;
-                        document.getElementById("sifra").value = kod;
-                        if (navigator.vibrate) navigator.vibrate(100);
-                        
-                        let postojeci = artikli.find(a => a.sifra === kod);
-                        if (postojeci) {
-                            document.getElementById("naziv").value = postojeci.naziv || "";
-                            document.getElementById("cijena").value = postojeci.cijena || "";
-                            dodajArtikal();
-                        } else if (document.getElementById("naziv").value.trim() !== "") {
-                            dodajArtikal();
-                        } else {
-                            document.getElementById("naziv").focus();
-                        }
-                        
-                        setTimeout(() => { pauza = false; }, 1500);
-                    }
-                } catch (e) {}
-            }
-            requestAnimationFrame(petlja);
-        }
-        petlja();
     }
 
     function dodajArtikal() {
         let sifra = document.getElementById("sifra").value.trim();
         let naziv = document.getElementById("naziv").value.trim();
         let kol = parseInt(document.getElementById("kolicina").value);
-        let cijena = parseFloat(document.getElementById("cijena").value) || 0;
+        let cijena = parseFloat(document.getElementById("cijena").value);
+
         if (!sifra || isNaN(kol) || kol < 1) return;
+        if (isNaN(cijena)) cijena = 0;
 
         let p = artikli.find(a => a.sifra === sifra);
         if (p) {
@@ -185,6 +158,7 @@ html
 
         localStorage.setItem("inventura_artikli", JSON.stringify(artikli));
         prikazi();
+
         document.getElementById("sifra").value = "";
         document.getElementById("naziv").value = "";
         document.getElementById("kolicina").value = "1";
@@ -194,27 +168,24 @@ html
     function izmjeni(s) {
         let a = artikli.find(x => x.sifra === s);
         if (!a) return;
-        
-        let n = prompt("Nova količina za " + s + " (0 za brisanje):", a.kolicina);
-        if (n === null) return;
-        let b = parseInt(n);
+
+        let nKol = prompt("Nova količina za " + s + " (0 za brisanje):", a.kolicina);
+        if (nKol === null) return;
+        let b = parseInt(nKol);
         if (isNaN(b) || b < 0) return;
+
         if (b === 0) {
             artikli = artikli.filter(x => x.sifra !== s);
-            localStorage.setItem("inventura_artikli", JSON.stringify(artikli));
-            prikazi();
-            return;
+        } else {
+            a.kolicina = b;
+            let nNaziv = prompt("Novi naziv artikla:", a.naziv || "");
+            if (nNaziv !== null) a.naziv = nNaziv.trim();
+
+            let nCijena = prompt("Nova cijena:", a.cijena || "0");
+            if (nCijena !== null && !isNaN(parseFloat(nCijena))) {
+                a.cijena = parseFloat(nCijena);
+            }
         }
-
-        let noviNaziv = prompt("Naziv artikla:", a.naziv || "");
-        if (noviNaziv === null) return;
-
-        let novaCijena = prompt("Cijena artikla:", a.cijena || 0);
-        if (novaCijena === null) return;
-
-        a.kolicina = b;
-        a.naziv = noviNaziv.trim();
-        a.cijena = parseFloat(novaCijena) || 0;
 
         localStorage.setItem("inventura_artikli", JSON.stringify(artikli));
         prikazi();
@@ -225,48 +196,50 @@ html
         document.getElementById("ukupnoStavki").innerText = artikli.length;
         tb.innerHTML = "";
         artikli.forEach(a => {
-            let cijenaPrikaz = a.cijena ? Number(a.cijena).toFixed(2) : "0.00";
+            let prikazNaziv = a.naziv ? `<br><small style="color:#555;">${a.naziv}</small>` : "";
+            let prikazCijena = a.cijena ? Number(a.cijena).toFixed(2) : "0.00";
             tb.innerHTML += `<tr>
-                <td>${a.sifra}</td>
-                <td>${a.naziv || "-"}</td>
+                <td><b>${a.sifra}</b>${prikazNaziv}</td>
                 <td>${a.kolicina}</td>
+                <td>${prikazCijena}</td>
+                <td><button class="edit" onclick="izmjeni('${a.sifra}')">✏️</button></td>
+            </tr>`;
+        });
+    }
+
+    function napraviTekst() {
+        return artikli.map(a => `${a.sifra},${a.naziv || ""},${a.kolicina},${Number(a.cijena || 0).toFixed(2)}`).join("\r\n");
+    }
+
+    document.getElementById("btnDodaj").onclick = dodajArtikal;
+
+    document.getElementById("btnPreuzmi").onclick = () => {
+        let txt = napraviTekst();
+        if (!txt) return alert("Lista je prazna!");
+        let l = document.createElement("a");
+        l.href = URL.createObjectURL(new Blob(["\uFEFF" + txt], { type: "text/csv;charset=utf-8;" }));
+        l.download = "inventura.csv";
+        l.click();
+    };
+
+    document.getElementById("btnPodijeli").onclick = async () => {
+        let txt = napraviTekst();
+        if (!txt) return alert("Lista je prazna!");
+        const file = new File([txt], "inventura.txt", { type: "text/plain" });
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+            try {
+                await navigator.share({ files: [file], title: "Inventura 2026" });
+            } catch (e) {}
+        } else {
+            alert("Vaš pregledač ne podržava direktno dijeljenje fajla. Koristite dugme za preuzimanje CSV-a.");
+        }
+    };
+
+    document.getElementById("btnObrisi").onclick = () => {
+        if (confirm("Da li ste sigurni da želite obrisati sve stavke sa telefona?")) {
+            artikli = [];
 Будите опрезни када користите кôд.
-${cijenaPrikaz}
-✏️
-`;
-});
-}
-function napraviTekst() {
-return artikli.map(a => ${a.sifra},${a.naziv || ""},${a.kolicina},${Number(a.cijena || 0).toFixed(2)}).join("\r\n");
-}
-document.getElementById("btnDodaj").onclick = dodajArtikal;
-document.getElementById("btnPreuzmi").onclick = () => {
-let txt = napraviTekst();
-if (!txt) return alert("Lista je prazna!");
-let l = document.createElement("a");
-l.href = URL.createObjectURL(new Blob(["\uFEFF" + txt], { type: "text/csv;charset=utf-8;" }));
-l.download = "inventura.csv";
-l.click();
-};
-document.getElementById("btnPodijeli").onclick = async () => {
-let txt = napraviTekst();
-if (!txt) return alert("Lista je prazna!");
-let file = new File([txt], "inventura.txt", { type: "text/plain" });
-if (navigator.canShare && navigator.canShare({ files: [file] })) {
-try {
-await navigator.share({ files: [file], title: "Inventura 2026" });
-} catch (e) {}
-} else {
-let l = document.createElement("a");
-l.href = URL.createObjectURL(new Blob([txt], { type: "text/plain;charset=utf-8;" }));
-l.download = "inventura.txt";
-l.click();
-}
-};
-document.getElementById("btnObrisi").onclick = () => {
-if (confirm("Obrisati sve artikle sa telefona?")) {
-artikli = [];
-localStorage.setItem("inventura_artikli", JSON.stringify(artikli));
+localStorage.removeItem("inventura_artikli");
 prikazi();
 }
 };
