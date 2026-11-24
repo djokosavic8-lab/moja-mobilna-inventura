@@ -29,7 +29,7 @@ html
 </head>
 <body>
 
-    <h2>📦 Mobilna zarez.trebanaziv i cijena Djoko 2026</h2>
+    <h2>📦 Mobilna zarez.hocu naziv i cijenu Djoko 2026</h2>
 
     <div class="box">
         <h3>1. Skeniranje / Unos</h3>
@@ -149,11 +149,14 @@ html
                         document.getElementById("sifra").value = skenirano;
                         if (navigator.vibrate) navigator.vibrate(100);
 
-                        // Ako artikal već postoji, povuci njegov naziv i cijenu
                         let postojeci = artikli.find(a => a.sifra === skenirano);
                         if (postojeci) {
-                            document.getElementById("naziv").value = postojeci.naziv || "";
-                            document.getElementById("cijena").value = postojeci.cijena || "";
+                            if (!document.getElementById("naziv").value) {
+                                document.getElementById("naziv").value = postojeci.naziv || "";
+                            }
+                            if (!document.getElementById("cijena").value) {
+                                document.getElementById("cijena").value = postojeci.cijena || "";
+                            }
                         }
 
                         dodajArtikal();
@@ -170,8 +173,8 @@ html
         let sifra = document.getElementById("sifra").value.trim();
         let naziv = document.getElementById("naziv").value.trim();
         let kol = parseInt(document.getElementById("kolicina").value);
-        let cijenaVal = document.getElementById("cijena").value.trim();
-        let cijena = cijenaVal === "" ? "" : parseFloat(cijenaVal).toFixed(2);
+        let cijenaVal = document.getElementById("cijena").value.trim().replace(",", ".");
+        let cijena = cijenaVal === "" ? "" : (isNaN(parseFloat(cijenaVal)) ? "" : parseFloat(cijenaVal).toFixed(2));
 
         if (!sifra || isNaN(kol) || kol < 1) return;
 
@@ -215,10 +218,11 @@ html
         } else {
             let novaCijena = prompt("Nova cijena za " + s + ":", a.cijena || "");
             if (novaCijena === null) return;
+            let cistBroj = novaCijena.trim().replace(",", ".");
 
             a.naziv = noviNaziv.trim();
             a.kolicina = b;
-            a.cijena = novaCijena.trim() === "" ? "" : parseFloat(novaCijena.replace(",", ".")).toFixed(2);
+            a.cijena = cistBroj === "" ? "" : (isNaN(parseFloat(cistBroj)) ? "" : parseFloat(cistBroj).toFixed(2));
         }
 
         localStorage.setItem("inventura_artikli", JSON.stringify(artikli));
@@ -232,17 +236,15 @@ html
         artikli.forEach(a => {
             tb.innerHTML += `<tr>
                 <td>${a.sifra}</td>
-                <td>${a.naziv || "-"}</td>
-                <td>${a.kolicina}</td>
-                <td>${a.cijena || "-"}</td>
-                <td><button class="edit" onclick="izmjeni('${a.sifra}')">✏️</button></td>
-            </tr>`;
-        });
-    }
-
-    function napraviTekst() {
 Будите опрезни када користите кôд.
-// Redoslijed: Šifra, Naziv, Količina, Cijena
+${a.naziv || "-"}
+${a.kolicina}
+${a.cijena || "-"}
+✏️
+`;
+});
+}
+function napraviTekst() {
 return artikli.map(a => {
 let cistNaziv = (a.naziv || "").replace(/,/g, " ");
 return ${a.sifra},${cistNaziv},${a.kolicina},${a.cijena || ""};
@@ -279,4 +281,3 @@ localStorage.removeItem("inventura_artikli");
 prikazi();
 }
 };
-prikazi();
