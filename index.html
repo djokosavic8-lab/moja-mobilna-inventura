@@ -56,7 +56,13 @@ html
     </div>
 
 <script>
-    let artikli = JSON.parse(localStorage.getItem("inventura_artikli")) || [];
+    let artikli = [];
+    try {
+        artikli = JSON.parse(localStorage.getItem("inventura_artikli")) || [];
+    } catch (e) {
+        artikli = [];
+    }
+
     let stream = null, aktivno = false, pauza = false;
     const video = document.getElementById("video");
     const btnKamera = document.getElementById("btnKamera");
@@ -86,10 +92,14 @@ html
         try {
             if (stream) stream.getTracks().forEach(t => t.stop());
             
-            stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: { ideal: "environment" } },
-                audio: false
-            });
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: { ideal: "environment" } },
+                    audio: false
+                });
+            } catch (e1) {
+                stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+            }
 
             video.style.display = "block";
             video.srcObject = stream;
@@ -134,7 +144,7 @@ html
                     const kodovi = await detector.detect(video);
                     if (kodovi.length > 0) {
                         pauza = true;
-                        document.getElementById("sifra").value = kodovi[0].rawValue;
+                        document.getElementById("sifra").value = kodovi.at(0).rawValue;
                         if (navigator.vibrate) navigator.vibrate(100);
                         dodajArtikal();
                         setTimeout(() => { pauza = false; }, 1500);
@@ -228,13 +238,12 @@ html
         let txt = napraviTekst();
         if (!txt) return alert("Lista je prazna!");
 
-        let fajl = new File([txt], "inventura.txt", { type: "text/plain" });
-        
-        if (navigator.canShare && navigator.canShare({ files: [fajl] })) {
-            try {
-                await navigator.share({
-                    files: [fajl],
 Будите опрезни када користите кôд.
+let fajl = new File([txt], "inventura.txt", { type: "text/plain" });
+if (navigator.canShare && navigator.canShare({ files: [fajl] })) {
+try {
+await navigator.share({
+files: [fajl],
 title: "Inventura 2026"
 });
 return;
