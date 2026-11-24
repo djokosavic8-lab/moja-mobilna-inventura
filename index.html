@@ -28,7 +28,7 @@ html
 </head>
 <body>
 
-    <h2>📦 DjokoSavic naziv cijena  2026</h2>
+    <h2>📦 Djole naziv i cijena GIO 2026</h2>
 
     <div class="box">
         <h3>1. Skeniranje / Unos</h3>
@@ -37,9 +37,9 @@ html
         <button id="btnKamera" type="button">📷 Upali kameru za Bar-kod</button>
         
         <p><label>Bar-kod ili Šifra:</label><input type="text" id="sifra" placeholder="Skenirajte ili upišite ručno"></p>
-        <p><label>Naziv:</label><input type="text" id="naziv" placeholder="Naziv artikla"></p>
+        <p><label>Naziv:</label><input type="text" id="naziv" placeholder="Naziv artikla (opciono)"></p>
         <p><label>Količina:</label><input type="number" id="kolicina" value="1" min="1"></p>
-        <p><label>Cijena:</label><input type="text" id="cijena" placeholder="Cijena"></p>
+        <p><label>Cijena:</label><input type="text" id="cijena" placeholder="Cijena (opciono)"></p>
         <button id="btnDodaj" type="button">➕ Upiši Artikal</button>
     </div>
 
@@ -56,7 +56,7 @@ html
     </div>
 
 <script>
-    let artikli = JSON.parse(localStorage.getItem("inventura_artikli_v2")) || [];
+    let artikli = JSON.parse(localStorage.getItem("inventura_2026_final")) || [];
     let stream = null, aktivno = false, pauza = false;
     const video = document.getElementById("video");
     const btnKamera = document.getElementById("btnKamera");
@@ -134,7 +134,7 @@ html
                     const kodovi = await detector.detect(video);
                     if (kodovi.length > 0) {
                         pauza = true;
-                        document.getElementById("sifra").value = kodovi[0].rawValue;
+                        document.getElementById("sifra").value = kodovi.shift().rawValue;
                         if (navigator.vibrate) navigator.vibrate(100);
                         dodajArtikal();
                         setTimeout(() => { pauza = false; }, 1500);
@@ -160,7 +160,7 @@ html
         } else {
             artikli.push({ sifra: sifra, naziv: naziv, kolicina: kol, cijena: cijena });
         }
-        localStorage.setItem("inventura_artikli_v2", JSON.stringify(artikli));
+        localStorage.setItem("inventura_2026_final", JSON.stringify(artikli));
         prikazi();
         document.getElementById("sifra").value = "";
         document.getElementById("naziv").value = "";
@@ -179,12 +179,12 @@ html
             artikli = artikli.filter(x => x.sifra !== s);
         } else {
             a.kolicina = b;
-            let nz = prompt("Naziv:", a.naziv || "");
+            let nz = prompt("Naziv artikla:", a.naziv || "");
             if (nz !== null) a.naziv = nz.trim().replace(/,/g, " ");
-            let cj = prompt("Cijena:", a.cijena || "");
+            let cj = prompt("Cijena artikla:", a.cijena || "");
             if (cj !== null) a.cijena = cj.trim().replace(/,/g, ".");
         }
-        localStorage.setItem("inventura_artikli_v2", JSON.stringify(artikli));
+        localStorage.setItem("inventura_2026_final", JSON.stringify(artikli));
         prikazi();
     }
 
@@ -227,9 +227,9 @@ html
                 return;
             } catch (err) {
                 if (err.name !== "AbortError") {
-                    alert("Greška pri slanju fajla: " + err.message);
-                }
 Будите опрезни када користите кôд.
+alert("Greška pri slanju fajla: " + err.message);
+}
 return;
 }
 }
@@ -238,7 +238,7 @@ alert("Vaš pregledač ne podržava slanje fajlova. Kliknite zeleno dugme za pre
 document.getElementById("btnObrisi").onclick = () => {
 if (confirm("Da li sigurno želite obrisati sve stavke sa telefona?")) {
 artikli = [];
-localStorage.removeItem("inventura_artikli_v2");
+localStorage.removeItem("inventura_2026_final");
 prikazi();
 }
 };
