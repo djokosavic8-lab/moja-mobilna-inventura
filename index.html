@@ -7,7 +7,6 @@ html
     <title>Inventura 2026</title>
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#007bff">
-    <link rel="manifest" href='data:application/manifest+json,{"name":"Inventura 2026","short_name":"Inventura","start_url":"https://github.io","display":"standalone","background_color":"#f4f4f9","theme_color":"#007bff","icons":[{"src":"https://flaticon.com","sizes":"512x512","type":"image/png"}]}'>
     <style>
         body { font-family: Arial, sans-serif; margin: 15px; background: #f4f4f9; color: #333; }
         h2 { text-align: center; }
@@ -28,7 +27,7 @@ html
 </head>
 <body>
 
-    <h2>📦 inventura zarez naziv Djoko 2026</h2>
+    <h2>📦 Djole zarez kol cij naziv 2026</h2>
 
     <div class="box">
         <h3>1. Skeniranje / Unos</h3>
@@ -136,7 +135,7 @@ html
                         pauza = true;
                         document.getElementById("sifra").value = kodovi[0].rawValue;
                         if (navigator.vibrate) navigator.vibrate(100);
-                        dodajArtikal();
+                        document.getElementById("naziv").focus();
                         setTimeout(() => { pauza = false; }, 1500);
                     }
                 } catch (e) {}
@@ -222,14 +221,15 @@ html
         if (artikli.length === 0) { alert("Nema unesenih artikala."); return; }
         let csv = "Sifra,Naziv,Kolicina,Cijena\n" + artikli.map(a => `${a.sifra},${a.naziv || ""},${a.kolicina},${a.cijena || ""}`).join("\n");
         let blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+        let a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "inventura.csv";
+        a.click();
+    };
+
+    document.getElementById("btnObrisi").onclick = function() {
+        if (confirm("Obrisati sve sačuvane artikle?")) {
 Будите опрезни када користите кôд.
-let a = document.createElement("a");
-a.href = URL.createObjectURL(blob);
-a.download = "inventura.csv";
-a.click();
-};
-document.getElementById("btnObrisi").onclick = function() {
-if (confirm("Obrisati sve sačuvane artikle?")) {
 artikli = [];
 localStorage.removeItem("inventura_artikli");
 prikazi();
