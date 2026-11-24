@@ -1,4 +1,5 @@
 html
+<!-- POCETAK -->
 <!DOCTYPE html>
 <html lang="hr">
 <head>
@@ -28,7 +29,7 @@ html
 </head>
 <body>
 
-    <h2>📦 Djole naziv i cijena GIO 2026</h2>
+    <h2>📦 DjokoSavic naziv cijena 2026</h2>
 
     <div class="box">
         <h3>1. Skeniranje / Unos</h3>
@@ -56,7 +57,7 @@ html
     </div>
 
 <script>
-    let artikli = JSON.parse(localStorage.getItem("inventura_2026_final")) || [];
+    let artikli = JSON.parse(localStorage.getItem("inventura_2026_v3")) || [];
     let stream = null, aktivno = false, pauza = false;
     const video = document.getElementById("video");
     const btnKamera = document.getElementById("btnKamera");
@@ -134,7 +135,7 @@ html
                     const kodovi = await detector.detect(video);
                     if (kodovi.length > 0) {
                         pauza = true;
-                        document.getElementById("sifra").value = kodovi.shift().rawValue;
+                        document.getElementById("sifra").value = kodovi.at(0).rawValue;
                         if (navigator.vibrate) navigator.vibrate(100);
                         dodajArtikal();
                         setTimeout(() => { pauza = false; }, 1500);
@@ -160,7 +161,7 @@ html
         } else {
             artikli.push({ sifra: sifra, naziv: naziv, kolicina: kol, cijena: cijena });
         }
-        localStorage.setItem("inventura_2026_final", JSON.stringify(artikli));
+        localStorage.setItem("inventura_2026_v3", JSON.stringify(artikli));
         prikazi();
         document.getElementById("sifra").value = "";
         document.getElementById("naziv").value = "";
@@ -184,7 +185,7 @@ html
             let cj = prompt("Cijena artikla:", a.cijena || "");
             if (cj !== null) a.cijena = cj.trim().replace(/,/g, ".");
         }
-        localStorage.setItem("inventura_2026_final", JSON.stringify(artikli));
+        localStorage.setItem("inventura_2026_v3", JSON.stringify(artikli));
         prikazi();
     }
 
@@ -238,7 +239,7 @@ alert("Vaš pregledač ne podržava slanje fajlova. Kliknite zeleno dugme za pre
 document.getElementById("btnObrisi").onclick = () => {
 if (confirm("Da li sigurno želite obrisati sve stavke sa telefona?")) {
 artikli = [];
-localStorage.removeItem("inventura_2026_final");
+localStorage.removeItem("inventura_2026_v3");
 prikazi();
 }
 };
