@@ -28,7 +28,7 @@ html
 </head>
 <body>
 
-    <h2>📦 probna promjena naziva Djoko 2026</h2>
+    <h2>📦 bez grske Djoko upis artikala 2026</h2>
 
     <div class="box">
         <h3>1. Skeniranje / Unos</h3>
@@ -173,19 +173,6 @@ html
     function izmjeni(s) {
         let a = artikli.find(x => x.sifra === s);
         if (!a) return;
-        let noviNaziv = prompt("Naziv za " + s + ":", a.naziv || "");
-        if (noviNaziv !== null) a.naziv = noviNaziv.trim().replace(/,/g, " ");
-        let n = prompt("Nova količina za " + s + " (0 za brisanje):", a.kolicina);
-        if (n !== null && !isNaN(parseInt(n))) {
-            let b = parseInt(n);
-            if (b === 0) artikli = artikli.filter(x => x.sifra !== s);
-            else if (b > 0) a.kolicina = b;
-        }
-        localStorage.setItem("inventura_artikli", JSON.stringify(artikli));
-        prikazi();
-    }
-        let a = artikli.find(x => x.sifra === s);
-        if (!a) return;
         let n = prompt("Nova količina za " + s + ":", a.kolicina);
         if (n === null) return;
         let b = parseInt(n);
@@ -194,6 +181,8 @@ html
             artikli = artikli.filter(x => x.sifra !== s);
         } else {
             a.kolicina = b;
+            let noviNaziv = prompt("Naziv za " + s + ":", a.naziv || "");
+            if (noviNaziv !== null) a.naziv = noviNaziv.trim().replace(/,/g, " ");
             let noviNaziv = prompt("Naziv za " + s + " (ostavi prazno ako ne treba):", a.naziv || "");
             if (noviNaziv !== null) {
                 a.naziv = noviNaziv.trim().replace(/,/g, " ");
@@ -263,3 +252,5 @@ html
 </script>
 </body>
 </html>
+Будите опрезни када користите кôд.
+Program skenira artikal i odma upisuje kolicinu 1 a ako hoces naziv upisi prvo naziv pa skeniraj kod pa idi na dodaj artikal.
