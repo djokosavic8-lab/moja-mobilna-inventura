@@ -28,7 +28,7 @@ html
 </head>
 <body>
 
-    <h2>📦 DODATO NAZIV2X GIOCO 2026</h2>
+    <h2>📦 GRESKU TRAZI DODATO NAZIV2X GIOCO 2026</h2>
 
     <div class="box">
         <h3>1. Skeniranje / Unos</h3>
@@ -56,6 +56,9 @@ html
     </div>
 
 <script>
+   window.onerror = function(msg, url, line) {
+    alert("GREŠKA U KODU na liniji " + line + ": " + msg);
+};
     let artikli = JSON.parse(localStorage.getItem("inventura_artikli")) || [];
     let stream = null, aktivno = false, pauza = false;
     const video = document.getElementById("video");
