@@ -217,7 +217,7 @@ function izmjeni(s) {
         let txt = napraviTekst();
         if (!txt) return alert("Lista je prazna!");
 
-        let fajl = new File([txt], "inventura.txt", { type: "text/plain" });
+        let fajl = new File([txt], "invartikli.txt", { type: "text/plain" });
         
         if (navigator.canShare && navigator.canShare({ files: [fajl] })) {
             try {
