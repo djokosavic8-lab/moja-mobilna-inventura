@@ -21,14 +21,14 @@ html
         input { width: 94%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; }
         video { width: 100%; max-height: 260px; background: #000; border-radius: 8px; margin-top: 10px; display: none; object-fit: cover; }
         #status { padding: 10px; margin-top: 10px; border-radius: 5px; font-size: 14px; display: none; background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
         th { background: #f2f2f2; }
     </style>
 </head>
 <body>
 
-    <h2>📦 Vraceno nazad bez naziva Savic 2026</h2>
+    <h2>📦 DODATO NAZIV GIOCO 2026</h2>
 
     <div class="box">
         <h3>1. Skeniranje / Unos</h3>
@@ -37,6 +37,7 @@ html
         <button id="btnKamera" type="button">📷 Upali kameru za Bar-kod</button>
         
         <p><label>Bar-kod ili Šifra:</label><input type="text" id="sifra" placeholder="Skenirajte ili upišite ručno"></p>
+        <p><label>Naziv (opciono):</label><input type="text" id="naziv" placeholder="Po potrebi upišite naziv"></p>
         <p><label>Količina:</label><input type="number" id="kolicina" value="1" min="1"></p>
         <button id="btnDodaj" type="button">➕ Upiši Artikal</button>
     </div>
@@ -48,7 +49,7 @@ html
         <button class="delete" id="btnObrisi" type="button">🗑️ Obriši sve sa telefona</button>
         
         <table>
-            <thead><tr><th>Šifra</th><th>Kol.</th><th>Akcija</th></tr></thead>
+            <thead><tr><th>Šifra</th><th>Naziv</th><th>Kol.</th><th>Akcija</th></tr></thead>
             <tbody id="tabelaArtikala"></tbody>
         </table>
     </div>
@@ -146,13 +147,22 @@ html
 
     function dodajArtikal() {
         let sifra = document.getElementById("sifra").value.trim();
+        let naziv = document.getElementById("naziv").value.trim().replace(/,/g, " ");
         let kol = parseInt(document.getElementById("kolicina").value);
         if (!sifra || isNaN(kol) || kol < 1) return;
+        
         let p = artikli.find(a => a.sifra === sifra);
-        if (p) p.kolicina += kol; else artikli.push({ sifra: sifra, kolicina: kol });
+        if (p) {
+            p.kolicina += kol;
+            if (naziv) p.naziv = naziv;
+        } else {
+            artikli.push({ sifra: sifra, naziv: naziv, kolicina: kol });
+        }
+        
         localStorage.setItem("inventura_artikli", JSON.stringify(artikli));
         prikazi();
         document.getElementById("sifra").value = "";
+        document.getElementById("naziv").value = "";
         document.getElementById("kolicina").value = "1";
     }
 
@@ -163,21 +173,30 @@ html
         if (n === null) return;
         let b = parseInt(n);
         if (isNaN(b) || b < 0) return;
-        if (b === 0) artikli = artikli.filter(x => x.sifra !== s); else a.kolicina = b;
+        if (b === 0) {
+            artikli = artikli.filter(x => x.sifra !== s);
+        } else {
+            a.kolicina = b;
+            let noviNaziv = prompt("Naziv za " + s + " (ostavi prazno ako ne treba):", a.naziv || "");
+            if (noviNaziv !== null) {
+                a.naziv = noviNaziv.trim().replace(/,/g, " ");
+            }
+        }
         localStorage.setItem("inventura_artikli", JSON.stringify(artikli));
         prikazi();
     }
+
     function prikazi() {
         let tb = document.getElementById("tabelaArtikala");
         document.getElementById("ukupnoStavki").innerText = artikli.length;
         tb.innerHTML = "";
         artikli.forEach(a => {
-            tb.innerHTML += `<tr><td>${a.sifra}</td><td>${a.kolicina}</td><td><button class="edit" onclick="izmjeni('${a.sifra}')">✏️</button></td></tr>`;
+            tb.innerHTML += `<tr><td>${a.sifra}</td><td>${a.naziv || "-"}</td><td>${a.kolicina}</td><td><button class="edit" onclick="izmjeni('${a.sifra}')">✏️</button></td></tr>`;
         });
     }
 
     function napraviTekst() {
-        return artikli.map(a => `${a.sifra},${a.kolicina}`).join("\r\n");
+        return artikli.map(a => `${a.sifra},${a.naziv || ""},${a.kolicina}`).join("\r\n");
     }
 
     document.getElementById("btnDodaj").onclick = dodajArtikal;
@@ -218,12 +237,3 @@ html
     document.getElementById("btnObrisi").onclick = () => {
         if (confirm("Da li sigurno želite obrisati sve stavke sa telefona?")) {
             artikli = [];
-            localStorage.removeItem("inventura_artikli");
-            prikazi();
-        }
-    };
-
-    prikazi();
-</script>
-</body>
-</html>
