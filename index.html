@@ -45,7 +45,7 @@ html
 
     <div class="box">
         <h3>2. Zadržani artikli na telefonu (<span id="ukupnoStavki">0</span>)</h3>
-        <button class="share" id="btnPodijeli" type="button">☁️ Pošalji na OneDrive (inventura.txt)</button>
+        <button class="share" id="btnPodijeli" type="button">☁️ Pošalji na OneDrive (artikli.txt)</button>
         <button class="download" id="btnPreuzmi" type="button">💾 Preuzmi lokalno na telefon (CSV)</button>
         <button class="delete" id="btnObrisi" type="button">🗑️ Obriši sve sa telefona</button>
         
@@ -216,9 +216,8 @@ function izmjeni(s) {
     document.getElementById("btnPodijeli").onclick = async () => {
         let txt = napraviTekst();
         if (!txt) return alert("Lista je prazna!");
-
-        let fajl = new File([txt], "inventura.txt", { type: "text/plain" });
-        
+let fajl = new File([txt], "artikli.txt", { type: "text/plain" });
+               
         if (navigator.canShare && navigator.canShare({ files: [fajl] })) {
             try {
                 await navigator.share({
